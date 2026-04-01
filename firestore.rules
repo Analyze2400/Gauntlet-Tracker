@@ -9,6 +9,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == "ana1yze2400@gmail.com";
+    }
+
     function hasOnlyAllowedFields(fields) {
       return request.resource.data.keys().hasOnly(fields);
     }
@@ -36,14 +40,14 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isValidGameEntry(request.resource.data);
       allow update: if false; // Entries are immutable
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /players/{playerName} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isValidPlayer(request.resource.data);
       allow update: if isAuthenticated() && isValidPlayer(request.resource.data);
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
   }
 }

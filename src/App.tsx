@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Trophy, Gamepad2, X, ChevronRight, Info, LogIn } from "lucide-react";
+import { Plus, Trophy, Gamepad2, X, ChevronRight, Info, LogIn, Trash2 } from "lucide-react";
 import { cn } from "./lib/utils";
-import { getAppData, addEntry, GameEntry, Player, AppData } from "./services/firestoreService";
+import { getAppData, addEntry, resetData, GameEntry, Player, AppData } from "./services/firestoreService";
 import { auth } from "./lib/firebase";
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
 
@@ -68,12 +68,27 @@ const Home = () => {
         </div>
         <div className="flex items-center gap-4">
           {user ? (
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-6 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
-            >
-              <Plus size={16} /> New Entry
-            </button>
+            <>
+              {user.email === "ana1yze2400@gmail.com" && (
+                <button 
+                  onClick={async () => {
+                    if (confirm("Are you sure you want to reset all data?")) {
+                      await resetData();
+                      window.location.reload();
+                    }
+                  }}
+                  className="sci-fi-border bg-red-900/20 hover:bg-red-900/40 text-red-400 px-4 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
+                >
+                  <Trash2 size={16} /> Reset
+                </button>
+              )}
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-6 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
+              >
+                <Plus size={16} /> New Entry
+              </button>
+            </>
           ) : (
             <button 
               onClick={signIn}

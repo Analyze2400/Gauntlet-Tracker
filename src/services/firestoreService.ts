@@ -106,3 +106,18 @@ export const addEntry = async (entry: GameEntry) => {
     handleFirestoreError(error, OperationType.WRITE, 'entries/players');
   }
 };
+
+export const resetData = async () => {
+  try {
+    const batch = writeBatch(db);
+    const entriesSnapshot = await getDocs(collection(db, 'entries'));
+    const playersSnapshot = await getDocs(collection(db, 'players'));
+
+    entriesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    playersSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'entries/players');
+  }
+};
