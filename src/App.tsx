@@ -1,42 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Trophy, Gamepad2, X, ChevronRight, Info } from "lucide-react";
+import { Plus, Trophy, Gamepad2, X, ChevronRight, Info, LogIn } from "lucide-react";
 import { cn } from "./lib/utils";
-
-interface Player {
-  name: string;
-  points: number;
-  history: GameEntry[];
-}
-
-interface GameEntry {
-  game: string;
-  players: string[];
-  winners: string[];
-  timestamp: number;
-}
-
-interface AppData {
-  players: Record<string, Player>;
-  entries: GameEntry[];
-}
+import { getAppData, addEntry, GameEntry, Player, AppData } from "./services/firestoreService";
+import { auth } from "./lib/firebase";
+import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
 
 const Home = () => {
   const [data, setData] = useState<AppData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const [showWipeConfirm, setShowWipeConfirm] = useState(false);
-
-  const fetchData = async () => {
-    const res = await fetch("/api/data");
-    const json = await res.json();
-    setData(json);
-  };
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    fetchData();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      if (user) {
+        fetchData();
+      }
+    });
+    return () => unsubscribe();
   }, []);
+
+  const signIn = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
+  const fetchData = async () => {
+    const appData = await getAppData();
+    setData(appData);
+  };
 
   const sortedPlayers: Player[] = data 
     ? (Object.values(data.players) as Player[]).sort((a, b) => b.points - a.points)
@@ -71,12 +66,23 @@ const Home = () => {
             <Info size={14} /> Rules
           </Link>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-6 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
-        >
-          <Plus size={16} /> New Entry
-        </button>
+        <div className="flex items-center gap-4">
+          {user ? (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-6 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
+            >
+              <Plus size={16} /> New Entry
+            </button>
+          ) : (
+            <button 
+              onClick={signIn}
+              className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-6 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
+            >
+              <LogIn size={16} /> Sign In
+            </button>
+          )}
+        </div>
       </header>
 
       <section className="mb-24">
@@ -143,32 +149,6 @@ const Home = () => {
       </section>
 
       <footer className="mt-24 pt-12 border-t border-white/10 text-center">
-        {!showWipeConfirm ? (
-          <button
-            onClick={() => setShowWipeConfirm(true)}
-            className="text-[10px] uppercase tracking-widest text-red-500/50 hover:text-red-500 transition-colors"
-          >
-            Debug: Wipe All Data
-          </button>
-        ) : (
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={async () => {
-                await fetch("/api/debug/wipe", { method: "POST" });
-                window.location.reload();
-              }}
-              className="text-[10px] uppercase tracking-widest text-red-500 font-bold"
-            >
-              Confirm Wipe
-            </button>
-            <button
-              onClick={() => setShowWipeConfirm(false)}
-              className="text-[10px] uppercase tracking-widest text-white/50"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
       </footer>
 
       <AnimatePresence>
@@ -205,13 +185,8 @@ const NewEntryModal = ({ existingPlayers, onClose, onSuccess }: { existingPlayer
     if (validPlayers.length < 2) return alert("Minimum 2 players required");
     if (winners.length === 0) return alert("At least one winner must be selected");
 
-    const res = await fetch("/api/entries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ game, players: validPlayers, winners }),
-    });
-
-    if (res.ok) onSuccess();
+    const res = await addEntry({ game, players: validPlayers, winners, timestamp: Date.now() });
+    onSuccess();
   };
 
   const toggleWinner = (name: string) => {

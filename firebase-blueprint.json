@@ -1,0 +1,37 @@
+{
+  "entities": {
+    "GameEntry": {
+      "title": "GameEntry",
+      "description": "A record of a game played.",
+      "type": "object",
+      "properties": {
+        "game": { "type": "string" },
+        "players": { "type": "array", "items": { "type": "string" } },
+        "winners": { "type": "array", "items": { "type": "string" } },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["game", "players", "winners", "timestamp"]
+    },
+    "Player": {
+      "title": "Player",
+      "description": "A player's stats and history.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "points": { "type": "number" },
+        "history": { "type": "array", "items": { "$ref": "GameEntry" } }
+      },
+      "required": ["name", "points", "history"]
+    }
+  },
+  "firestore": {
+    "/entries/{entryId}": {
+      "schema": "GameEntry",
+      "description": "Collection of all game entries."
+    },
+    "/players/{playerName}": {
+      "schema": "Player",
+      "description": "Collection of player stats."
+    }
+  }
+}
