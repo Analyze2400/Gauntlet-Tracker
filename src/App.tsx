@@ -1,0 +1,413 @@
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
+import { Plus, Trophy, Gamepad2, X, ChevronRight, Info } from "lucide-react";
+import { cn } from "./lib/utils";
+
+interface Player {
+  name: string;
+  points: number;
+  history: GameEntry[];
+}
+
+interface GameEntry {
+  game: string;
+  players: string[];
+  winners: string[];
+  timestamp: number;
+}
+
+interface AppData {
+  players: Record<string, Player>;
+  entries: GameEntry[];
+}
+
+const Home = () => {
+  const [data, setData] = useState<AppData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [showWipeConfirm, setShowWipeConfirm] = useState(false);
+
+  const fetchData = async () => {
+    const res = await fetch("/api/data");
+    const json = await res.json();
+    setData(json);
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const sortedPlayers: Player[] = data 
+    ? (Object.values(data.players) as Player[]).sort((a, b) => b.points - a.points)
+    : [];
+
+  const displayPlayers = [...sortedPlayers];
+  if (displayPlayers.length < 5) {
+    while (displayPlayers.length < 5) {
+      displayPlayers.push({ name: "NULL", points: 0, history: [] });
+    }
+  }
+
+  const gameTitles: string[] = data 
+    ? Array.from(new Set(data.entries.map(e => e.game)))
+    : [];
+
+  const rows: string[][] = [];
+  for (let i = 0; i < gameTitles.length; i += 5) {
+    rows.push(gameTitles.slice(i, i + 5));
+  }
+
+  const existingPlayerNames = data ? Object.keys(data.players) : [];
+
+  return (
+    <div className="min-h-screen p-6 max-w-5xl mx-auto">
+      <header className="flex justify-between items-center mb-12 border-b border-white/10 pb-6">
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-mono tracking-widest uppercase glow-text text-[#00ffcc]">
+            Gauntlet Tracker
+          </h1>
+          <Link to="/rules" className="text-xs uppercase tracking-widest text-white/50 hover:text-[#00ffcc] transition-colors flex items-center gap-1">
+            <Info size={14} /> Rules
+          </Link>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-6 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
+        >
+          <Plus size={16} /> New Entry
+        </button>
+      </header>
+
+      <section className="mb-24">
+        <h2 className="text-xs uppercase tracking-[0.3em] text-white/30 mb-8 flex items-center gap-2">
+          <Trophy size={14} /> Top Contenders
+        </h2>
+        <div className="grid gap-4">
+          {displayPlayers.map((player, idx) => (
+            <motion.div
+              key={player.name + idx}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              onClick={() => player.name !== "NULL" && setSelectedPlayer(player)}
+              className={cn(
+                "group flex items-center justify-between p-4 bg-white/5 border border-white/5 transition-all",
+                player.name !== "NULL" ? "hover:border-[#00ffcc]/30 cursor-pointer" : "opacity-30"
+              )}
+            >
+              <div className="flex items-center gap-6">
+                <span className="font-mono text-white/20 w-6">{(idx + 1).toString().padStart(2, '0')}</span>
+                <span className="text-lg tracking-wide group-hover:text-[#00ffcc] transition-colors">{player.name}</span>
+              </div>
+              <div className="flex items-center gap-8">
+                <div className="text-right">
+                  <div className="text-[10px] uppercase tracking-widest text-white/30">Points</div>
+                  <div className="font-mono text-xl text-[#00ffcc]">{player.name === "NULL" ? "NULL" : player.points}</div>
+                </div>
+                {player.name !== "NULL" && <ChevronRight size={20} className="text-white/10 group-hover:text-[#00ffcc] transition-colors" />}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      <section className="pt-24 border-t border-white/10">
+        <h2 className="text-xl font-mono tracking-[0.4em] uppercase text-center mb-12 glow-text">
+          Gauntlet Contenders
+        </h2>
+        <div className="space-y-4">
+          {rows.map((row, idx) => (
+            <div key={idx} className="marquee-container border-y border-white/5">
+              <div className={cn(
+                "marquee-track flex gap-24 items-center",
+                idx % 2 === 0 ? "animate-marquee-right" : "animate-marquee-left"
+              )}>
+                {[...row, ...row].map((game, gIdx) => (
+                  <span key={gIdx} className={cn(
+                    "text-2xl font-mono uppercase tracking-widest text-white/40 whitespace-nowrap",
+                    gIdx === row.length * 2 - 1 ? "pr-24" : ""
+                  )}>
+                    {game}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+          {rows.length === 0 && (
+            <div className="text-center py-8 text-white/10 uppercase tracking-widest text-xs">
+              Waiting for games...
+            </div>
+          )}
+        </div>
+      </section>
+
+      <footer className="mt-24 pt-12 border-t border-white/10 text-center">
+        {!showWipeConfirm ? (
+          <button
+            onClick={() => setShowWipeConfirm(true)}
+            className="text-[10px] uppercase tracking-widest text-red-500/50 hover:text-red-500 transition-colors"
+          >
+            Debug: Wipe All Data
+          </button>
+        ) : (
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={async () => {
+                await fetch("/api/debug/wipe", { method: "POST" });
+                window.location.reload();
+              }}
+              className="text-[10px] uppercase tracking-widest text-red-500 font-bold"
+            >
+              Confirm Wipe
+            </button>
+            <button
+              onClick={() => setShowWipeConfirm(false)}
+              className="text-[10px] uppercase tracking-widest text-white/50"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </footer>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <NewEntryModal 
+            existingPlayers={existingPlayerNames}
+            onClose={() => setIsModalOpen(false)} 
+            onSuccess={() => {
+              setIsModalOpen(false);
+              fetchData();
+            }} 
+          />
+        )}
+        {selectedPlayer && (
+          <PlayerDetailsModal 
+            player={selectedPlayer} 
+            onClose={() => setSelectedPlayer(null)} 
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const NewEntryModal = ({ existingPlayers, onClose, onSuccess }: { existingPlayers: string[], onClose: () => void, onSuccess: () => void }) => {
+  const [game, setGame] = useState("");
+  const [playerNames, setPlayerNames] = useState<string[]>(["", ""]);
+  const [winners, setWinners] = useState<string[]>([]);
+  const [customNames, setCustomNames] = useState<Record<number, string>>({});
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validPlayers = playerNames.map((name, idx) => name === "CUSTOM" ? customNames[idx] : name).filter(n => n && n.trim() !== "");
+    if (validPlayers.length < 2) return alert("Minimum 2 players required");
+    if (winners.length === 0) return alert("At least one winner must be selected");
+
+    const res = await fetch("/api/entries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ game, players: validPlayers, winners }),
+    });
+
+    if (res.ok) onSuccess();
+  };
+
+  const toggleWinner = (name: string) => {
+    setWinners(prev => 
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+    );
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-[#0a0a0a] border border-white/10 p-8 w-full max-w-md sci-fi-border"
+      >
+        <div className="flex justify-between items-center mb-8">
+          <h3 className="text-xl font-mono uppercase tracking-widest glow-text">Submit Entry</h3>
+          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">Game Title</label>
+            <input 
+              required
+              value={game}
+              onChange={e => setGame(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 px-4 py-3 text-white focus:border-[#00ffcc] outline-none transition-all font-mono"
+              placeholder="ENTER GAME NAME"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">Players & Winners</label>
+            <div className="space-y-3">
+              {playerNames.map((name, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <div className="flex-1 flex gap-2">
+                    <select
+                      value={name}
+                      onChange={e => {
+                        const newNames = [...playerNames];
+                        newNames[idx] = e.target.value;
+                        setPlayerNames(newNames);
+                      }}
+                      className="flex-1 bg-white/5 border border-white/10 px-4 py-2 text-white focus:border-[#00ffcc] outline-none transition-all font-mono text-sm"
+                    >
+                      <option value="">Select Player</option>
+                      {existingPlayers.map(p => <option key={p} value={p}>{p}</option>)}
+                      <option value="CUSTOM">Add New Player...</option>
+                    </select>
+                    {name === "CUSTOM" && (
+                      <input 
+                        required
+                        value={customNames[idx] || ""}
+                        onChange={e => setCustomNames({...customNames, [idx]: e.target.value})}
+                        className="flex-1 bg-white/5 border border-white/10 px-4 py-2 text-white focus:border-[#00ffcc] outline-none transition-all font-mono text-sm"
+                        placeholder="Player Name"
+                      />
+                    )}
+                  </div>
+                  {name && (name !== "CUSTOM" || customNames[idx]?.trim()) && (
+                    <button
+                      type="button"
+                      onClick={() => toggleWinner(name === "CUSTOM" ? customNames[idx] : name)}
+                      className={cn(
+                        "w-10 h-10 flex items-center justify-center border transition-all",
+                        winners.includes(name === "CUSTOM" ? customNames[idx] : name) 
+                          ? "bg-[#00ffcc] border-[#00ffcc] text-black" 
+                          : "bg-white/5 border-white/10 text-white/30 hover:border-[#00ffcc]/50"
+                      )}
+                    >
+                      <Trophy size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {playerNames.length < 6 && (
+                <button 
+                  type="button"
+                  onClick={() => setPlayerNames([...playerNames, ""])}
+                  className="text-[10px] uppercase tracking-widest text-[#00ffcc]/60 hover:text-[#00ffcc] transition-colors"
+                >
+                  + Add Player
+                </button>
+              )}
+            </div>
+          </div>
+
+          <button 
+            type="submit"
+            className="w-full bg-[#00ffcc] text-black py-4 font-mono uppercase tracking-[0.2em] hover:bg-[#00ffcc]/80 transition-all font-bold"
+          >
+            Transmit Data
+          </button>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const PlayerDetailsModal = ({ player, onClose }: { player: Player, onClose: () => void }) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    >
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 20, opacity: 0 }}
+        className="bg-[#0a0a0a] border border-white/10 p-8 w-full max-w-2xl sci-fi-border max-h-[80vh] overflow-y-auto"
+      >
+        <div className="flex justify-between items-start mb-12">
+          <div>
+            <h3 className="text-3xl font-mono uppercase tracking-widest glow-text mb-2">{player.name}</h3>
+            <div className="flex gap-8">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-white/30">Overall Score</div>
+                <div className="text-2xl font-mono text-[#00ffcc]">{player.points}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-white/30">Games Played</div>
+                <div className="text-2xl font-mono text-white">{player.history.length}</div>
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors p-2">
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-[10px] uppercase tracking-widest text-white/30 mb-4">Mission History</h4>
+          {player.history.map((entry, idx) => {
+            const isWinner = entry.winners.includes(player.name);
+            return (
+              <div key={idx} className="flex items-center justify-between p-4 bg-white/5 border-l-2 border-white/10">
+                <div className="flex items-center gap-4">
+                  <Gamepad2 size={18} className="text-white/20" />
+                  <div>
+                    <div className="text-sm uppercase tracking-wider">{entry.game}</div>
+                    <div className="text-[10px] text-white/30 font-mono">
+                      {new Date(entry.timestamp).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+                <div className={cn(
+                  "px-3 py-1 text-[10px] uppercase tracking-widest font-bold",
+                  isWinner ? "bg-[#00ffcc]/10 text-[#00ffcc]" : "bg-red-500/10 text-red-400"
+                )}>
+                  {isWinner ? "Victory" : "Defeat"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const Rules = () => (
+  <div className="min-h-screen p-6 max-w-5xl mx-auto">
+    <header className="flex justify-between items-center mb-12 border-b border-white/10 pb-6">
+      <Link to="/" className="text-xs uppercase tracking-widest text-white/50 hover:text-[#00ffcc] transition-colors flex items-center gap-1">
+        <ChevronRight size={14} className="rotate-180" /> Back to Base
+      </Link>
+      <h1 className="text-2xl font-mono tracking-widest uppercase glow-text text-[#00ffcc]">
+        Rules of Engagement
+      </h1>
+      <div className="w-24" />
+    </header>
+    <div className="py-24 text-center text-white/20 uppercase tracking-[0.5em]">
+      [ Data Encrypted - Check Back Later ]
+    </div>
+  </div>
+);
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/rules" element={<Rules />} />
+      </Routes>
+    </Router>
+  );
+}
