@@ -375,7 +375,7 @@ const PlayerDetailsModal = ({ player, onClose }: { player: Player, onClose: () =
 };
 
 const Rules = () => (
-  <div className="min-h-screen p-6 max-w-5xl mx-auto">
+  <div className="min-h-screen p-6 max-w-5xl mx-auto pb-24">
     <header className="flex justify-between items-center mb-12 border-b border-white/10 pb-6">
       <Link to="/" className="text-xs uppercase tracking-widest text-white/50 hover:text-[#00ffcc] transition-colors flex items-center gap-1">
         <ChevronRight size={14} className="rotate-180" /> Back to Base
@@ -385,9 +385,75 @@ const Rules = () => (
       </h1>
       <div className="w-24" />
     </header>
-    <div className="py-24 text-center text-white/20 uppercase tracking-[0.5em]">
-      [ Data Encrypted - Check Back Later ]
-    </div>
+
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-16"
+    >
+      <section className="sci-fi-border bg-white/5 p-8 border border-white/10">
+        <h2 className="text-xl font-mono uppercase tracking-[0.3em] text-[#00ffcc] mb-6 flex items-center gap-3">
+          <Trophy size={20} /> Rules
+        </h2>
+        <p className="text-lg leading-relaxed text-white/80 tracking-wide">
+          Welcome to the <span className="text-[#00ffcc] font-bold">Spring Gauntlet</span>! Challenge your friends to any game, any time, and fight to keep your spot in the upcoming end-of-year tournament that will decide who is the undisputed best gamer in the house!
+        </p>
+      </section>
+
+      <section className="space-y-8">
+        <h2 className="text-xl font-mono uppercase tracking-[0.3em] text-[#00ffcc] mb-12 text-center glow-text">
+          How to Play
+        </h2>
+
+        <div className="grid gap-6">
+          {[
+            {
+              step: "01",
+              title: "Challenge",
+              desc: "Challenge someone, or multiple people, to a game! It could be anything from Super Smash Bros. Ultimate to Just Dance, or even board games like Catan or Uno!"
+            },
+            {
+              step: "02",
+              title: "Win",
+              desc: "Play the game out and determine the winner, or winners!"
+            },
+            {
+              step: "03",
+              title: "Create an Entry",
+              desc: "On the homepage of this website, sign-in using the button in the upper right corner if you haven’t already. Once you do, the sign-in button will be replaced with a “+New Entry” button. Click that button."
+            },
+            {
+              step: "04",
+              title: "Fill it Out",
+              desc: "Once you click the “+New Entry” button, a pop up will appear. In the text space at the top, put in the name of the game you played. In the section below, select the people that played from the dropdown list. If you don’t see their name, or yours, at the very bottom of the dropdown you can find an “Add New Player” option. Select it and enter in the name of the person. Finally, when all names are entered, click the trophy icon next to the names of the player(s) that won!"
+            },
+            {
+              step: "05",
+              title: "Upload",
+              desc: "When you’ve finished selecting the winner(s), click the “Transmit Data” button at the bottom, and you should see the leaderboard update in real-time!"
+            }
+          ].map((item, idx) => (
+            <motion.div 
+              key={idx}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              className="flex gap-6 p-6 bg-white/5 border border-white/5 hover:border-[#00ffcc]/20 transition-all group"
+            >
+              <div className="font-mono text-3xl text-white/10 group-hover:text-[#00ffcc]/20 transition-colors">
+                {item.step}
+              </div>
+              <div>
+                <h3 className="text-xs uppercase tracking-[0.4em] text-[#00ffcc] mb-2">Step {idx + 1}: {item.title}</h3>
+                <p className="text-white/60 leading-relaxed text-sm tracking-wide">
+                  {item.desc}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+    </motion.div>
   </div>
 );
 
