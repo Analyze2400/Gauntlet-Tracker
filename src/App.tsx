@@ -58,17 +58,17 @@ const Home = () => {
   const existingPlayerNames = data ? Object.keys(data.players) : [];
 
   return (
-    <div className="min-h-screen p-6 max-w-5xl mx-auto">
+    <div className="min-h-screen p-4 md:p-6 max-w-5xl mx-auto">
       <header className="flex justify-between items-center mb-12 border-b border-white/10 pb-6">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-mono tracking-widest uppercase glow-text text-[#00ffcc]">
+          <h1 className="text-xl md:text-2xl font-mono tracking-widest uppercase glow-text text-[#00ffcc]">
             Gauntlet Tracker
           </h1>
           <Link to="/rules" className="text-xs uppercase tracking-widest text-white/50 hover:text-[#00ffcc] transition-colors flex items-center gap-1">
             <Info size={14} /> Rules
           </Link>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           {user ? (
             <>
               {user.email === "ana1yze2400@gmail.com" && (
@@ -79,14 +79,14 @@ const Home = () => {
                       window.location.reload();
                     }
                   }}
-                  className="sci-fi-border bg-red-900/20 hover:bg-red-900/40 text-red-400 px-4 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
+                  className="sci-fi-border bg-red-900/20 hover:bg-red-900/40 text-red-400 px-3 py-2 min-h-[44px] text-xs uppercase tracking-widest transition-all flex items-center gap-2"
                 >
                   <Trash2 size={16} /> Reset
                 </button>
               )}
               <button 
                 onClick={() => setIsModalOpen(true)}
-                className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-6 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
+                className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-4 py-2 min-h-[44px] text-xs uppercase tracking-widest transition-all flex items-center gap-2"
               >
                 <Plus size={16} /> New Entry
               </button>
@@ -94,7 +94,7 @@ const Home = () => {
           ) : (
             <button 
               onClick={signIn}
-              className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-6 py-2 text-xs uppercase tracking-widest transition-all flex items-center gap-2"
+              className="sci-fi-border bg-white/5 hover:bg-[#00ffcc]/10 text-white px-4 py-2 min-h-[44px] text-xs uppercase tracking-widest transition-all flex items-center gap-2"
             >
               <LogIn size={16} /> Sign In
             </button>
@@ -115,18 +115,18 @@ const Home = () => {
               transition={{ delay: idx * 0.05 }}
               onClick={() => player.name !== "NULL" && setSelectedPlayer(player)}
               className={cn(
-                "group flex items-center justify-between p-4 bg-white/5 border border-white/5 transition-all",
+                "group flex items-center justify-between p-4 bg-white/5 border border-white/5 transition-all min-h-[60px]",
                 player.name !== "NULL" ? "hover:border-[#00ffcc]/30 cursor-pointer" : "opacity-30"
               )}
             >
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4 md:gap-6">
                 <span className="font-mono text-white/20 w-6">{(idx + 1).toString().padStart(2, '0')}</span>
-                <span className="text-lg tracking-wide group-hover:text-[#00ffcc] transition-colors">{player.name}</span>
+                <span className="text-base md:text-lg tracking-wide group-hover:text-[#00ffcc] transition-colors">{player.name}</span>
               </div>
-              <div className="flex items-center gap-8">
+              <div className="flex items-center gap-4 md:gap-8">
                 <div className="text-right">
                   <div className="text-[10px] uppercase tracking-widest text-white/30">Points</div>
-                  <div className="font-mono text-xl text-[#00ffcc]">{player.name === "NULL" ? "NULL" : player.points}</div>
+                  <div className="font-mono text-lg md:text-xl text-[#00ffcc]">{player.name === "NULL" ? "NULL" : player.points}</div>
                 </div>
                 {player.name !== "NULL" && <ChevronRight size={20} className="text-white/10 group-hover:text-[#00ffcc] transition-colors" />}
               </div>
@@ -136,20 +136,20 @@ const Home = () => {
       </section>
 
       <section className="pt-24 border-t border-white/10">
-        <h2 className="text-xl font-mono tracking-[0.4em] uppercase text-center mb-12 glow-text">
+        <h2 className="text-lg md:text-xl font-mono tracking-[0.4em] uppercase text-center mb-12 glow-text">
           Gauntlet Contenders
         </h2>
         <div className="space-y-4">
           {rows.map((row, idx) => (
             <div key={idx} className="marquee-container border-y border-white/5">
               <div className={cn(
-                "marquee-track flex gap-24 items-center",
+                "marquee-track flex gap-12 md:gap-24 items-center",
                 idx % 2 === 0 ? "animate-marquee-right" : "animate-marquee-left"
               )}>
                 {[...row, ...row].map((game, gIdx) => (
                   <span key={gIdx} className={cn(
-                    "text-2xl font-mono uppercase tracking-widest text-white/40 whitespace-nowrap",
-                    gIdx === row.length * 2 - 1 ? "pr-24" : ""
+                    "text-lg md:text-2xl font-mono uppercase tracking-widest text-white/40 whitespace-nowrap",
+                    gIdx === row.length * 2 - 1 ? "pr-12 md:pr-24" : ""
                   )}>
                     {game}
                   </span>
