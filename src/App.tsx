@@ -7,6 +7,8 @@ import { getAppData, addEntry, resetData, GameEntry, Player, AppData } from "./s
 import { auth } from "./lib/firebase";
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
 
+// nice
+
 const Home = () => {
   const [data, setData] = useState<AppData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
