@@ -18,10 +18,9 @@ service cloud.firestore {
     }
 
     function isValidGameEntry(data) {
-      return hasOnlyAllowedFields(['game', 'players', 'winners', 'timestamp']) &&
+      return hasOnlyAllowedFields(['game', 'players', 'winCounts', 'timestamp']) &&
              data.game is string && data.game.size() > 0 && data.game.size() < 100 &&
              data.players is list && data.players.size() > 0 && data.players.size() < 20 &&
-             data.winners is list && data.winners.size() > 0 && data.winners.size() < 20 &&
              data.timestamp is number;
     }
 

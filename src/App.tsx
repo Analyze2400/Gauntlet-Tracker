@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Trophy, Gamepad2, X, ChevronRight, Info, LogIn, Trash2 } from "lucide-react";
 import { cn } from "./lib/utils";
-import { getAppData, addEntry, resetData, GameEntry, Player, AppData } from "./services/firestoreService";
+import { getAppData, addEntry, resetData, deletePlayer, GameEntry, Player, AppData } from "./services/firestoreService";
 import { auth } from "./lib/firebase";
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
 
@@ -183,6 +183,7 @@ const Home = () => {
           <PlayerDetailsModal 
             player={selectedPlayer} 
             onClose={() => setSelectedPlayer(null)} 
+            onSuccess={() => { setSelectedPlayer(null); fetchData(); }}
           />
         )}
       </AnimatePresence>
@@ -193,23 +194,28 @@ const Home = () => {
 const NewEntryModal = ({ existingPlayers, onClose, onSuccess }: { existingPlayers: string[], onClose: () => void, onSuccess: () => void }) => {
   const [game, setGame] = useState("");
   const [playerNames, setPlayerNames] = useState<string[]>(["", ""]);
-  const [winners, setWinners] = useState<string[]>([]);
+  const [winCounts, setWinCounts] = useState<Record<string, number>>({});
   const [customNames, setCustomNames] = useState<Record<number, string>>({});
+  const [user] = useState<User | null>(auth.currentUser);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const validPlayers = playerNames.map((name, idx) => name === "CUSTOM" ? customNames[idx] : name).filter(n => n && n.trim() !== "");
     if (validPlayers.length < 2) return alert("Minimum 2 players required");
-    if (winners.length === 0) return alert("At least one winner must be selected");
+    
+    const finalWinCounts: Record<string, number> = {};
+    validPlayers.forEach(p => finalWinCounts[p] = winCounts[p] || 0);
+    
+    if (Object.values(finalWinCounts).reduce((a, b) => a + b, 0) === 0) return alert("At least one win must be recorded");
 
-    const res = await addEntry({ game, players: validPlayers, winners, timestamp: Date.now() });
+    const res = await addEntry({ game, players: validPlayers, winCounts: finalWinCounts, timestamp: Date.now() });
     onSuccess();
   };
 
-  const toggleWinner = (name: string) => {
-    setWinners(prev => 
-      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
-    );
+  const removePlayer = (idx: number) => {
+    const newNames = [...playerNames];
+    newNames.splice(idx, 1);
+    setPlayerNames(newNames);
   };
 
   return (
@@ -245,7 +251,7 @@ const NewEntryModal = ({ existingPlayers, onClose, onSuccess }: { existingPlayer
           </div>
 
           <div>
-            <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">Players & Winners</label>
+            <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">Players & Wins</label>
             <div className="space-y-3">
               {playerNames.map((name, idx) => (
                 <div key={idx} className="flex gap-2">
@@ -274,17 +280,24 @@ const NewEntryModal = ({ existingPlayers, onClose, onSuccess }: { existingPlayer
                     )}
                   </div>
                   {name && (name !== "CUSTOM" || customNames[idx]?.trim()) && (
+                    <input
+                      type="number"
+                      min="0"
+                      value={winCounts[name === "CUSTOM" ? customNames[idx] : name] || 0}
+                      onChange={e => {
+                        const pName = name === "CUSTOM" ? customNames[idx] : name;
+                        setWinCounts({...winCounts, [pName]: parseInt(e.target.value) || 0});
+                      }}
+                      className="w-16 bg-white/5 border border-white/10 px-2 py-2 text-white text-center focus:border-[#00ffcc] outline-none transition-all font-mono text-sm"
+                    />
+                  )}
+                  {user?.email === "ana1yze2400@gmail.com" && (
                     <button
                       type="button"
-                      onClick={() => toggleWinner(name === "CUSTOM" ? customNames[idx] : name)}
-                      className={cn(
-                        "w-10 h-10 flex items-center justify-center border transition-all",
-                        winners.includes(name === "CUSTOM" ? customNames[idx] : name) 
-                          ? "bg-[#00ffcc] border-[#00ffcc] text-black" 
-                          : "bg-white/5 border-white/10 text-white/30 hover:border-[#00ffcc]/50"
-                      )}
+                      onClick={() => removePlayer(idx)}
+                      className="text-red-500 hover:text-red-400"
                     >
-                      <Trophy size={16} />
+                      <X size={16} />
                     </button>
                   )}
                 </div>
@@ -313,7 +326,32 @@ const NewEntryModal = ({ existingPlayers, onClose, onSuccess }: { existingPlayer
   );
 };
 
-const PlayerDetailsModal = ({ player, onClose }: { player: Player, onClose: () => void }) => {
+const ConfirmationModal = ({ message, onConfirm, onCancel }: { message: string, onConfirm: () => void, onCancel: () => void }) => (
+  <motion.div 
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+  >
+    <div className="bg-[#0a0a0a] border border-white/10 p-8 w-full max-w-sm sci-fi-border">
+      <p className="text-white mb-8 font-mono">{message}</p>
+      <div className="flex gap-4">
+        <button onClick={onCancel} className="flex-1 bg-white/5 hover:bg-white/10 text-white py-3 font-mono uppercase tracking-widest transition-all">Cancel</button>
+        <button onClick={onConfirm} className="flex-1 bg-red-900/20 hover:bg-red-900/40 text-red-400 py-3 font-mono uppercase tracking-widest transition-all">Confirm</button>
+      </div>
+    </div>
+  </motion.div>
+);
+
+const PlayerDetailsModal = ({ player, onClose, onSuccess }: { player: Player, onClose: () => void, onSuccess: () => void }) => {
+  const [user] = useState<User | null>(auth.currentUser);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleDelete = async () => {
+    await deletePlayer(player.name);
+    onSuccess();
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -321,6 +359,15 @@ const PlayerDetailsModal = ({ player, onClose }: { player: Player, onClose: () =
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     >
+      <AnimatePresence>
+        {showConfirm && (
+          <ConfirmationModal 
+            message="Are you sure you want to remove this player?"
+            onConfirm={handleDelete}
+            onCancel={() => setShowConfirm(false)}
+          />
+        )}
+      </AnimatePresence>
       <motion.div 
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -341,15 +388,22 @@ const PlayerDetailsModal = ({ player, onClose }: { player: Player, onClose: () =
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors p-2">
-            <X size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            {user?.email === "ana1yze2400@gmail.com" && (
+              <button onClick={() => setShowConfirm(true)} className="text-red-500 hover:text-red-400 p-2">
+                <Trash2 size={20} />
+              </button>
+            )}
+            <button onClick={onClose} className="text-white/30 hover:text-white transition-colors p-2">
+              <X size={24} />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4">
           <h4 className="text-[10px] uppercase tracking-widest text-white/30 mb-4">Mission History</h4>
           {player.history.map((entry, idx) => {
-            const isWinner = entry.winners.includes(player.name);
+            const wins = (entry.winCounts && entry.winCounts[player.name]) || 0;
             return (
               <div key={idx} className="flex items-center justify-between p-4 bg-white/5 border-l-2 border-white/10">
                 <div className="flex items-center gap-4">
@@ -363,9 +417,9 @@ const PlayerDetailsModal = ({ player, onClose }: { player: Player, onClose: () =
                 </div>
                 <div className={cn(
                   "px-3 py-1 text-[10px] uppercase tracking-widest font-bold",
-                  isWinner ? "bg-[#00ffcc]/10 text-[#00ffcc]" : "bg-red-500/10 text-red-400"
+                  wins > 0 ? "bg-[#00ffcc]/10 text-[#00ffcc]" : "bg-red-500/10 text-red-400"
                 )}>
-                  {isWinner ? "Victory" : "Defeat"}
+                  {wins} Wins
                 </div>
               </div>
             );

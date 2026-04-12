@@ -1,5 +1,5 @@
 import { db, auth } from '../lib/firebase';
-import { collection, getDocs, doc, query, orderBy, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, query, orderBy, writeBatch, deleteDoc } from 'firebase/firestore';
 
 enum OperationType {
   CREATE = 'create',
@@ -37,7 +37,8 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 export interface GameEntry {
   game: string;
   players: string[];
-  winners: string[];
+  winCounts?: Record<string, number>;
+  winners?: string[]; // Keep for backward compatibility
   timestamp: number;
 }
 
@@ -57,7 +58,14 @@ export const getAppData = async (): Promise<AppData> => {
     const entriesSnapshot = await getDocs(query(collection(db, 'entries'), orderBy('timestamp', 'desc')));
     const playersSnapshot = await getDocs(collection(db, 'players'));
 
-    const entries: GameEntry[] = entriesSnapshot.docs.map(doc => doc.data() as GameEntry);
+    const entries: GameEntry[] = entriesSnapshot.docs.map(doc => {
+      const data = doc.data() as GameEntry;
+      if (data.winCounts) return data;
+      // Backward compatibility
+      const winCounts: Record<string, number> = {};
+      data.winners?.forEach((w: string) => winCounts[w] = 1);
+      return { ...data, winCounts };
+    });
     const players: Record<string, Player> = {};
     
     playersSnapshot.docs.forEach(doc => {
@@ -78,13 +86,17 @@ export const addEntry = async (entry: GameEntry) => {
     const entryRef = doc(collection(db, 'entries'));
     batch.set(entryRef, entry);
 
+    // Calculate total wins by others for each player
+    const totalWins = entry.winCounts ? Object.values(entry.winCounts).reduce((a, b) => a + b, 0) : 0;
+
     // Update players
     for (const playerName of entry.players) {
       const playerRef = doc(db, 'players', playerName);
       const playerDoc = await getDocs(query(collection(db, 'players'))).then(snapshot => snapshot.docs.find(d => d.id === playerName));
       
-      const isWinner = entry.winners.includes(playerName);
-      const pointsToAdd = isWinner ? 100 : 25;
+      const wins = (entry.winCounts && entry.winCounts[playerName]) || 0;
+      const winsByOthers = totalWins - wins;
+      const pointsToAdd = (100 * wins) + (25 * winsByOthers);
 
       if (playerDoc) {
         const playerData = playerDoc.data() as Player;
@@ -119,5 +131,13 @@ export const resetData = async () => {
     await batch.commit();
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, 'entries/players');
+  }
+};
+
+export const deletePlayer = async (playerName: string) => {
+  try {
+    await deleteDoc(doc(db, 'players', playerName));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'players');
   }
 };
