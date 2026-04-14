@@ -402,7 +402,7 @@ const PlayerDetailsModal = ({ player, onClose, onSuccess }: { player: Player, on
 
         <div className="space-y-4">
           <h4 className="text-[10px] uppercase tracking-widest text-white/30 mb-4">Mission History</h4>
-          {player.history.map((entry, idx) => {
+          {[...player.history].sort((a, b) => b.timestamp - a.timestamp).map((entry, idx) => {
             const wins = (entry.winCounts && entry.winCounts[player.name]) || 0;
             return (
               <div key={idx} className="flex items-center justify-between p-4 bg-white/5 border-l-2 border-white/10">
